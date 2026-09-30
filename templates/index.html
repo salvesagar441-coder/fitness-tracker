@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitPulse Fitness Tracker</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Styles -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="dark-theme">
+
+    <!-- Auth Screen -->
+    <div id="auth-screen">
+        <div class="auth-card glass-card">
+            <div class="auth-brand brand">
+                <i class="fa-solid fa-heart-pulse"></i> <span>Fit<span>Pulse</span></span>
+            </div>
+            
+            <!-- Login Form -->
+            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                <h2 class="auth-title">Welcome Back</h2>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="login-username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+                <div id="login-error" class="auth-error"></div>
+                <p class="auth-toggle"><a href="#" onclick="toggleAuthForm('signup'); return false;">Don't have account? Sign up</a></p>
+            </form>
+
+            <!-- Signup Form -->
+            <form id="signup-form" class="auth-form hidden" onsubmit="handleSignup(event)">
+                <h2 class="auth-title">Create Account</h2>
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="signup-username" required>
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="signup-email" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" id="signup-password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Sign Up</button>
+                <div id="signup-error" class="auth-error"></div>
+                <p class="auth-toggle"><a href="#" onclick="toggleAuthForm('login'); return false;">Already have account? Login</a></p>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main App Container -->
+    <div id="app-container" class="app-layout" style="display:none">
+        
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="brand">
+                <i class="fa-solid fa-heart-pulse"></i> <span>Fit<span>Pulse</span></span>
+            </div>
+            <nav class="nav-menu">
+                <a href="#" class="nav-link active" data-tab="dashboard">
+                    <i class="fa-solid fa-chart-pie"></i> <span>Dashboard</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="workouts">
+                    <i class="fa-solid fa-dumbbell"></i> <span>Workouts</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="nutrition">
+                    <i class="fa-solid fa-utensils"></i> <span>Nutrition</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="analytics">
+                    <i class="fa-solid fa-chart-line"></i> <span>Analytics</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="goals">
+                    <i class="fa-solid fa-trophy"></i> <span>Goals</span>
+                </a>
+                <a href="#" class="nav-link" data-tab="profile">
+                    <i class="fa-solid fa-user-gear"></i> <span>Profile</span>
+                </a>
+            </nav>
+            <div class="db-status-widget">
+                <span class="dot connected"></span> Connected
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <button class="sidebar-toggle" id="sidebar-toggle">
+                <i class="fa-solid fa-bars"></i>
+            </button>
+            <header class="top-header">
+                <div>
+                    <h2>Welcome back, <span id="user-display-name">Student</span> 👋</h2>
+                    <p class="subtitle">Here's your fitness breakdown for today</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-secondary" onclick="openModal('nutrition-modal')">Log Meal</button>
+                    <button class="btn btn-primary" onclick="openModal('workout-modal')">Log Workout</button>
+                </div>
+            </header>
+
+            <div id="toast-container" class="toast-container"></div>
+
+            <!-- Dashboard Tab -->
+            <div id="dashboard-tab" class="tab-content active">
+                <div class="metrics-grid">
+                    <div class="metric-card glass-card">
+                        <div class="card-icon burn-icon"><i class="fa-solid fa-fire-flame-curved"></i></div>
+                        <div class="card-data">
+                            <div class="card-label">Calories Burned</div>
+                            <div class="card-value"><span id="metric-calories-burned">0</span></div>
+                            <div class="card-subtext">Goal: <span id="metric-calorie-goal">0</span> kcal</div>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <div class="card-icon time-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                        <div class="card-data">
+                            <div class="card-label">Active Workout</div>
+                            <div class="card-value"><span id="metric-workout-mins">0</span>m</div>
+                            <div class="card-subtext">Goal: <span id="metric-workout-goal">0</span>m</div>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <div class="card-icon water-icon"><i class="fa-solid fa-droplet"></i></div>
+                        <div class="card-data">
+                            <div class="card-label">Water Intake</div>
+                            <div class="card-value"><span id="metric-water-ml">0</span>ml</div>
+                            <div class="card-subtext">Goal: <span id="metric-water-goal">0</span>ml</div>
+                            <button class="btn btn-quick-water btn-sm" onclick="quickAddWater(250)">+250ml</button>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <div class="card-icon bmi-icon"><i class="fa-solid fa-heart-pulse"></i></div>
+                        <div class="card-data">
+                            <div class="card-label">BMI</div>
+                            <div class="card-value"><span id="metric-bmi">0</span></div>
+                            <div class="card-subtext"><span id="metric-bmi-category">--</span></div>
+                        </div>
+                    </div>
+                    <div class="metric-card glass-card">
+                        <div class="card-icon streak-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <div class="card-data">
+                            <div class="card-label">Current Streak</div>
+                            <div class="card-value">7 Days</div>
+                            <div class="card-subtext">🔥 Active Streak</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">Weekly Calorie Balance</div>
+                        <div class="chart-wrapper">
+                            <canvas id="weeklyCalorieChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card glass-card">
+                        <div class="chart-header">Macro Split</div>
+                        <div class="donut-wrapper">
+                            <canvas id="macroDonutChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-container glass-card">
+                    <div class="section-header">
+                        <h3>Recent Activity</h3>
+                        <button class="btn btn-sm btn-outline" onclick="loadRecentActivityList()"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    </div>
+                    <div id="dashboard-recent-logs" class="recent-logs-list"></div>
+                </div>
+            </div>
+
+            <!-- Workouts Tab -->
+            <div id="workouts-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Workout Sessions</h2>
+                    <button class="btn btn-primary" onclick="openModal('workout-modal')">Add New Workout</button>
+                </div>
+                <div class="filter-bar">
+                    <button class="filter-btn active" data-filter="All">All</button>
+                    <button class="filter-btn" data-filter="Cardio">Cardio</button>
+                    <button class="filter-btn" data-filter="Strength">Strength</button>
+                    <button class="filter-btn" data-filter="HIIT">HIIT</button>
+                    <button class="filter-btn" data-filter="Yoga">Yoga</button>
+                </div>
+                <div id="workouts-grid" class="workouts-grid"></div>
+            </div>
+
+            <!-- Nutrition Tab -->
+            <div id="nutrition-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Nutrition & Meals</h2>
+                    <button class="btn btn-secondary" onclick="openModal('nutrition-modal')">Log Meal</button>
+                </div>
+                <div class="nutrition-summary-row glass-card">
+                    <div class="macro-pill">
+                        <div class="macro-title">Protein</div>
+                        <div class="macro-val" id="total-protein">0g</div>
+                    </div>
+                    <div class="macro-pill">
+                        <div class="macro-title">Carbs</div>
+                        <div class="macro-val" id="total-carbs">0g</div>
+                    </div>
+                    <div class="macro-pill">
+                        <div class="macro-title">Fat</div>
+                        <div class="macro-val" id="total-fat">0g</div>
+                    </div>
+                </div>
+                <div id="nutrition-list" class="nutrition-list glass-card"></div>
+            </div>
+
+            <!-- Analytics Tab -->
+            <div id="analytics-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Performance Analytics</h2>
+                    <button class="btn btn-primary" onclick="openModal('weight-modal')">Log Weight</button>
+                </div>
+                <div class="chart-card glass-card">
+                    <div class="chart-header">Weight Progress Trend</div>
+                    <div class="chart-wrapper">
+                        <canvas id="weightTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Goals Tab -->
+            <div id="goals-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Goals & Achievement Badges</h2>
+                    <button class="btn btn-primary" onclick="openModal('goal-modal')">Add Goal</button>
+                </div>
+                <div class="goals-section">
+                    <h3>Your Goals</h3>
+                    <div id="goals-container" class="goals-grid"></div>
+                </div>
+                <div class="badges-section">
+                    <h3>Your Badges</h3>
+                    <div id="badges-container" class="badges-grid"></div>
+                </div>
+            </div>
+
+            <!-- Profile Tab -->
+            <div id="profile-tab" class="tab-content">
+                <div class="tab-header">
+                    <h2>Profile & Settings</h2>
+                </div>
+                <div class="profile-card glass-card">
+                    <form id="profile-form" onsubmit="submitProfile(event)">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Username</label>
+                                <input type="text" id="p-username" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Email</label>
+                                <input type="email" id="p-email" required>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Weight (kg)</label>
+                                <input type="number" id="p-weight" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Height (cm)</label>
+                                <input type="number" id="p-height" step="0.1" required>
+                            </div>
+                        </div>
+                        <div class="form-row three-col">
+                            <div class="form-group">
+                                <label>Daily Calorie Goal</label>
+                                <input type="number" id="p-calorie-goal" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Daily Water Goal (ml)</label>
+                                <input type="number" id="p-water-goal" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Daily Workout Goal (min)</label>
+                                <input type="number" id="p-workout-goal" required>
+                            </div>
+                        </div>
+                        <div class="bmi-display">
+                            Your BMI: <span id="p-bmi">--</span> (<span id="p-bmi-cat">--</span>)
+                        </div>
+                        <div class="profile-actions" style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <button type="button" class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+                            <button type="button" class="btn btn-danger" onclick="handleLogout()">Logout</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+
+    <!-- Workout Modal -->
+    <div id="workout-modal" class="modal-overlay">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3 id="workout-modal-title">Log Workout Session</h3>
+                <button class="modal-close" onclick="closeModal('workout-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="workout-form" onsubmit="submitWorkout(event)">
+                <input type="hidden" id="w-edit-id">
+                <div class="form-group">
+                    <label>Title</label>
+                    <input type="text" id="w-title" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select id="w-category" required>
+                            <option value="Cardio">Cardio</option>
+                            <option value="Strength">Strength</option>
+                            <option value="HIIT">HIIT</option>
+                            <option value="Yoga">Yoga</option>
+                            <option value="Flexibility">Flexibility</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Intensity</label>
+                        <select id="w-intensity" required>
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Duration (mins)</label>
+                        <input type="number" id="w-duration" value="30" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Calories Burned</label>
+                        <input type="number" id="w-calories" value="200" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea id="w-notes" rows="3"></textarea>
+                </div>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('workout-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Workout</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Nutrition Modal -->
+    <div id="nutrition-modal" class="modal-overlay">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3 id="nutrition-modal-title">Log Meal Entry</h3>
+                <button class="modal-close" onclick="closeModal('nutrition-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="nutrition-form" onsubmit="submitMeal(event)">
+                <input type="hidden" id="n-edit-id">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Meal Name</label>
+                        <input type="text" id="n-name" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Type</label>
+                        <select id="n-type" required>
+                            <option value="Breakfast">Breakfast</option>
+                            <option value="Lunch">Lunch</option>
+                            <option value="Dinner">Dinner</option>
+                            <option value="Snack">Snack</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Calories</label>
+                        <input type="number" id="n-calories" value="400" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Protein (g)</label>
+                        <input type="number" id="n-protein" value="25" step="0.1" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Carbs (g)</label>
+                        <input type="number" id="n-carbs" value="45" step="0.1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Fat (g)</label>
+                        <input type="number" id="n-fat" value="10" step="0.1" required>
+                    </div>
+                </div>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('nutrition-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Meal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Weight Modal -->
+    <div id="weight-modal" class="modal-overlay">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3>Log Weight</h3>
+                <button class="modal-close" onclick="closeModal('weight-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="weight-form" onsubmit="submitWeight(event)">
+                <div class="form-group">
+                    <label>Weight (kg)</label>
+                    <input type="number" id="wl-weight" step="0.1" required>
+                </div>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('weight-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Log Weight</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Goal Modal -->
+    <div id="goal-modal" class="modal-overlay">
+        <div class="modal-card glass-card">
+            <div class="modal-header">
+                <h3>Add Goal</h3>
+                <button class="modal-close" onclick="closeModal('goal-modal')"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <form id="goal-form" onsubmit="submitGoal(event)">
+                <div class="form-group">
+                    <label>Goal Title</label>
+                    <input type="text" id="g-title" required>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Target Value</label>
+                        <input type="number" id="g-target" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Unit</label>
+                        <select id="g-unit" required>
+                            <option value="mins">mins</option>
+                            <option value="ml">ml</option>
+                            <option value="kcal">kcal</option>
+                            <option value="kg">kg</option>
+                            <option value="sessions">sessions</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions" style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+                    <button type="button" class="btn btn-outline" onclick="closeModal('goal-modal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
